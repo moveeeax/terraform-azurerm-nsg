@@ -9,7 +9,7 @@ without changing the module.
 
 ```hcl
 module "nsg" {
-  source = "github.com/cybercapybara/terraform-azurerm-nsg"
+  source = "github.com/moveeeax/terraform-azurerm-nsg"
 
   name                = "web-nsg"
   resource_group_name = "prod-rg"
