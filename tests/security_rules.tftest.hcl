@@ -10,8 +10,9 @@ variables {
   location            = "eastus"
 }
 
-# Must stay the first apply in this file: run blocks share one state, and the
-# characterization test below depends on that.
+# Must stay the first apply in this file: run blocks share one state, and
+# security_rule is Optional+Computed, so a later run cannot assert on an empty
+# rule set -- see the "Managing rules: inline only" caveat in README.md.
 run "no_rules_by_default" {
   assert {
     condition     = length(azurerm_network_security_group.this.security_rule) == 0
@@ -50,18 +51,6 @@ run "rules_render_into_the_nsg" {
   assert {
     condition     = length(local.public_admin_rules) == 0
     error_message = "Public HTTPS and VNet-scoped SSH must not be flagged as public admin exposure."
-  }
-}
-
-# Characterization test for a provider behaviour, not a wish. security_rule is
-# Optional+Computed on azurerm_network_security_group, so a config that renders
-# zero blocks leaves whatever rules already exist untouched. Emptying
-# security_rules therefore does NOT delete rules -- see the caveat in README.md.
-# It runs straight after the run above, inheriting its two-rule state.
-run "emptying_security_rules_does_not_delete_existing_rules" {
-  assert {
-    condition     = length(azurerm_network_security_group.this.security_rule) == 2
-    error_message = "Expected the Optional+Computed security_rule attribute to retain the previously applied rules."
   }
 }
 

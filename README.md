@@ -90,12 +90,11 @@ in the provider, which has two consequences worth knowing:
 - **Do not combine this module with `azurerm_network_security_rule` resources**
   pointed at the same NSG. Mixing the inline block with standalone rule resources
   produces a perpetual diff, with each side removing the other's rules on every apply.
-- **Setting `security_rules = []` does not delete existing rules.** A config that
-  renders zero blocks leaves whatever is already on the NSG in place, and rules
-  added out of band are silently adopted rather than removed. To actually remove
-  a rule, delete its entry from the list while other entries remain, or destroy
-  and recreate the NSG. This behaviour is pinned by a test in
-  [`tests/`](tests/security_rules.tftest.hcl).
+- **Setting `security_rules = []` does not reliably delete existing rules.** A
+  config that renders zero blocks leaves the attribute unset, so the value already
+  in state is kept and rules added out of band can be silently adopted rather than
+  removed. To remove a rule, delete its entry from the list while other entries
+  remain, or destroy and recreate the NSG.
 
 ## Requirements
 
