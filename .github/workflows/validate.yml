@@ -24,6 +24,10 @@ jobs:
       - name: validate
         run: tofu validate
 
+      # Runs against a mocked provider: no Azure credentials, no network.
+      - name: test
+        run: tofu test
+
       - name: validate example
         working-directory: examples/basic
         run: |
