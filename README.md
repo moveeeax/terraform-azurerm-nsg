@@ -9,7 +9,7 @@ without changing the module.
 
 ```hcl
 module "nsg" {
-  source = "github.com/moveeeax/terraform-azurerm-nsg"
+  source = "github.com/moveeeax/terraform-azurerm-nsg?ref=v1.0.0"
 
   name                = "web-nsg"
   resource_group_name = "prod-rg"
@@ -101,7 +101,10 @@ in the provider, which has two consequences worth knowing:
 | Name      | Version         |
 |-----------|-----------------|
 | terraform | >= 1.5          |
-| azurerm   | >= 3.0, < 5.0   |
+| azurerm   | >= 3.0, < 6.0   |
+
+CI validates and tests the module against the 3.0.0 floor and the latest azurerm
+5.x release; 6.x is excluded until it has been tested.
 
 The test suite additionally needs Terraform >= 1.7 for `mock_provider`; the
 module itself does not.
