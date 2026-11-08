@@ -93,3 +93,21 @@ resource "azurerm_network_security_group" "this" {
     }
   }
 }
+
+# An NSG filters nothing until it is attached. The maps are keyed by caller
+# chosen static names rather than by the IDs themselves, so for_each still works
+# when the subnets or NICs are created in the same apply and their IDs are not
+# known at plan time.
+resource "azurerm_subnet_network_security_group_association" "this" {
+  for_each = var.subnet_ids
+
+  subnet_id                 = each.value
+  network_security_group_id = azurerm_network_security_group.this.id
+}
+
+resource "azurerm_network_interface_security_group_association" "this" {
+  for_each = var.network_interface_ids
+
+  network_interface_id      = each.value
+  network_security_group_id = azurerm_network_security_group.this.id
+}

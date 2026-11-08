@@ -13,6 +13,20 @@ provider "azurerm" {
   features {}
 }
 
+resource "azurerm_virtual_network" "example" {
+  name                = "example-vnet"
+  resource_group_name = "example-rg"
+  location            = "eastus"
+  address_space       = ["10.0.0.0/16"]
+}
+
+resource "azurerm_subnet" "web" {
+  name                 = "web"
+  resource_group_name  = "example-rg"
+  virtual_network_name = azurerm_virtual_network.example.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
 module "nsg" {
   source = "../.."
 
@@ -39,6 +53,12 @@ module "nsg" {
       destination_port_range = "22"
     }
   ]
+
+  # The key is static, so this plans even though the subnet ID is only known
+  # after apply.
+  subnet_ids = {
+    web = azurerm_subnet.web.id
+  }
 
   tags = {
     Environment = "sandbox"

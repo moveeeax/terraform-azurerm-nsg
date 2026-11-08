@@ -81,3 +81,25 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "subnet_ids" {
+  description = "Subnets to associate the network security group with, as a map of static name to subnet ID. Keys must be known at plan time; values may come from resources created in the same apply. A subnet can have only one NSG."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for id in values(var.subnet_ids) : can(regex("(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Network/virtualNetworks/[^/]+/subnets/[^/]+$", id))])
+    error_message = "Each subnet_ids value must be a subnet resource ID: /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<subnet>."
+  }
+}
+
+variable "network_interface_ids" {
+  description = "Network interfaces to associate the network security group with, as a map of static name to NIC ID. Keys must be known at plan time; values may come from resources created in the same apply. A NIC can have only one NSG."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for id in values(var.network_interface_ids) : can(regex("(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft\\.Network/networkInterfaces/[^/]+$", id))])
+    error_message = "Each network_interface_ids value must be a network interface resource ID: /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/networkInterfaces/<nic>."
+  }
+}
