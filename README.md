@@ -35,6 +35,34 @@ module "nsg" {
 
 A runnable example lives in [`examples/basic`](examples/basic).
 
+## Associating the NSG
+
+An NSG filters nothing until it is attached to a subnet or a network interface.
+`subnet_ids` and `network_interface_ids` create
+`azurerm_subnet_network_security_group_association` and
+`azurerm_network_interface_security_group_association` resources. Both default
+to `{}`.
+
+```hcl
+  subnet_ids = {
+    web = azurerm_subnet.web.id
+    app = azurerm_subnet.app.id
+  }
+
+  network_interface_ids = {
+    bastion = azurerm_network_interface.bastion.id
+  }
+```
+
+The keys are names you pick and must be known at plan time; the values can be
+IDs of subnets or NICs created in the same apply. Keying by the ID itself would
+fail with "Invalid for_each argument" on the first apply. Values must be full
+resource IDs, so passing a subnet name by mistake fails at plan time.
+
+Azure allows one NSG per subnet and one per NIC. Don't associate the same
+subnet or NIC from a second place (another instance of this module or a
+hand-written association resource), or the two will fight over it.
+
 ## Public exposure guard
 
 Every optional field of a rule defaults to `*`, so a rule that omits
@@ -119,6 +147,8 @@ module itself does not.
 | `security_rules`           | List of security rules applied to the network security group.          | `list(object)` | `[]`    |    no    |
 | `allow_public_admin_ports` | Allow inbound rules that expose a port in `admin_ports` to the internet. | `bool`       | `false` |    no    |
 | `admin_ports`              | Ports the public exposure guard treats as administrative or database ports. | `list(number)` | `[22, 23, 135, 445, 1433, 1521, 3306, 3389, 5432, 5900, 5985, 5986, 6379, 9200, 27017]` | no |
+| `subnet_ids`               | Subnets to associate the NSG with, as static name => subnet ID. See [Associating the NSG](#associating-the-nsg). | `map(string)` | `{}` | no |
+| `network_interface_ids`    | NICs to associate the NSG with, as static name => NIC ID.              | `map(string)`  | `{}`    |    no    |
 | `tags`                     | Map of tags applied to the network security group.                     | `map(string)`  | `{}`    |    no    |
 
 ### `security_rules` object
@@ -142,6 +172,8 @@ module itself does not.
 |--------|----------------------------------------|
 | `id`   | ID of the network security group.      |
 | `name` | Name of the network security group.    |
+| `subnet_association_ids` | Subnet association IDs, keyed like `subnet_ids`. |
+| `network_interface_association_ids` | NIC association IDs, keyed like `network_interface_ids`. |
 
 ## Tests
 

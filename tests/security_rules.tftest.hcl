@@ -2,7 +2,15 @@
 # mock_provider requires Terraform >= 1.7 / OpenTofu >= 1.7. That is a
 # test-only requirement and deliberately not reflected in required_version,
 # which stays at >= 1.5 for consumers of the module.
-mock_provider "azurerm" {}
+mock_provider "azurerm" {
+  # The association resources parse network_security_group_id as an ARM ID
+  # during plan, so the mocked NSG needs a well-formed ID.
+  mock_resource "azurerm_network_security_group" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/networkSecurityGroups/test-nsg"
+    }
+  }
+}
 
 variables {
   name                = "test-nsg"
@@ -17,6 +25,16 @@ run "no_rules_by_default" {
   assert {
     condition     = length(azurerm_network_security_group.this.security_rule) == 0
     error_message = "The module must not add any security rule of its own."
+  }
+
+  assert {
+    condition     = length(azurerm_subnet_network_security_group_association.this) == 0 && length(azurerm_network_interface_security_group_association.this) == 0
+    error_message = "No associations may be created unless subnet_ids or network_interface_ids is set."
+  }
+
+  assert {
+    condition     = output.subnet_association_ids == {} && output.network_interface_association_ids == {}
+    error_message = "The association outputs must be empty by default."
   }
 }
 
@@ -358,4 +376,72 @@ run "rejects_comma_separated_port_list" {
   }
 
   expect_failures = [var.security_rules]
+}
+
+# --- associations ----------------------------------------------------------
+
+run "associates_subnets_and_nics" {
+  variables {
+    subnet_ids = {
+      web = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/web"
+      app = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/app"
+    }
+    network_interface_ids = {
+      bastion = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/networkInterfaces/bastion-nic"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_subnet_network_security_group_association.this) == 2
+    error_message = "One subnet association must be created per subnet_ids entry."
+  }
+
+  assert {
+    condition     = azurerm_subnet_network_security_group_association.this["web"].subnet_id == var.subnet_ids["web"]
+    error_message = "The subnet ID must be passed through unchanged."
+  }
+
+  assert {
+    condition     = azurerm_subnet_network_security_group_association.this["app"].network_security_group_id == azurerm_network_security_group.this.id
+    error_message = "Subnet associations must point at this module's NSG."
+  }
+
+  assert {
+    condition     = azurerm_network_interface_security_group_association.this["bastion"].network_interface_id == var.network_interface_ids["bastion"]
+    error_message = "The NIC ID must be passed through unchanged."
+  }
+
+  assert {
+    condition     = azurerm_network_interface_security_group_association.this["bastion"].network_security_group_id == azurerm_network_security_group.this.id
+    error_message = "NIC associations must point at this module's NSG."
+  }
+
+  assert {
+    condition     = keys(output.subnet_association_ids) == ["app", "web"] && keys(output.network_interface_association_ids) == ["bastion"]
+    error_message = "The association outputs must be keyed like the input maps."
+  }
+}
+
+run "rejects_subnet_name_instead_of_id" {
+  command = plan
+
+  variables {
+    subnet_ids = {
+      web = "web-subnet"
+    }
+  }
+
+  expect_failures = [var.subnet_ids]
+}
+
+run "rejects_nic_name_instead_of_id" {
+  command = plan
+
+  variables {
+    network_interface_ids = {
+      bastion = "bastion-nic"
+    }
+  }
+
+  expect_failures = [var.network_interface_ids]
 }
